@@ -11,18 +11,14 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
-
 from captureAgents import CaptureAgent
-import random, time, util
-from game import Directions
-import game
-
+from mcts_agent import MCTSAgent
 #################
 # Team creation #
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'DummyAgent', second = 'DummyAgent'):
+               first = 'MCTSPacman', second = 'MCTSPacman'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -45,48 +41,62 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-class DummyAgent(CaptureAgent):
-  """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
+class MCTSPacman(CaptureAgent):
+    def registerInitialState(self, gameState):
+        CaptureAgent.registerInitialState(self, gameState)
+        self.start = gameState.getAgentPosition(self.index)
 
-  def registerInitialState(self, gameState):
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
+    def chooseAction(self, gameState):
+        # actions = gameState.getLegalActions(self.index)
 
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
+        # Select MCTS agent action
+        mcts_agent = MCTSAgent(self.index, 0.1)
+        action = mcts_agent.getAction(gameState)
 
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
+        return action
 
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
-    CaptureAgent.registerInitialState(self, gameState)
+# class DummyAgent(CaptureAgent):
+#   """
+#   A Dummy agent to serve as an example of the necessary agent structure.
+#   You should look at baselineTeam.py for more details about how to
+#   create an agent as this is the bare minimum.
+#   """
 
-    '''
-    Your initialization code goes here, if you need any.
-    '''
+#   def registerInitialState(self, gameState):
+#     """
+#     This method handles the initial setup of the
+#     agent to populate useful fields (such as what team
+#     we're on).
+
+#     A distanceCalculator instance caches the maze distances
+#     between each pair of positions, so your agents can use:
+#     self.distancer.getDistance(p1, p2)
+
+#     IMPORTANT: This method may run for at most 15 seconds.
+#     """
+
+#     '''
+#     Make sure you do not delete the following line. If you would like to
+#     use Manhattan distances instead of maze distances in order to save
+#     on initialization time, please take a look at
+#     CaptureAgent.registerInitialState in captureAgents.py.
+#     '''
+#     CaptureAgent.registerInitialState(self, gameState)
+
+#     '''
+#     Your initialization code goes here, if you need any.
+#     '''
 
 
-  def chooseAction(self, gameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
+#   def chooseAction(self, gameState):
+#     """
+#     Picks among actions randomly.
+#     """
+#     actions = gameState.getLegalActions(self.index)
 
-    '''
-    You should change this in your own agent.
-    '''
+#     '''
+#     You should change this in your own agent.
+#     '''
 
-    return random.choice(actions)
+#     return random.choice(actions)
 
