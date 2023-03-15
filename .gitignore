@@ -1,1 +1,5 @@
+# ignore ALL files in directory
+__pycache__/
+
+# ignore score?
 score
