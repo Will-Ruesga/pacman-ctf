@@ -110,7 +110,7 @@ class Configuration:
 
         Actions are movement vectors.
         """
-        x, y= self.pos
+        x, y = self.pos
         dx, dy = vector
         direction = Actions.vectorToDirection(vector)
         if direction == Directions.STOP:
@@ -219,7 +219,7 @@ class Grid:
         #g.data = self.data
         return g
 
-    def count(self, item =True ):
+    def count(self, item = True):
         return sum([x.count(item) for x in self.data])
 
     def asList(self, key = True):
