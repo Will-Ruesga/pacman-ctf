@@ -119,8 +119,8 @@ class CaptureAgent(Agent):
     self.agentsOnTeam = agentsOnTeam
 
   def observationFunction(self, gameState):
-    " Changing this won't affect pacclient.py, but will affect capture.py "
-    return gameState.makeObservation(self.index)
+    " MGAIA 2023, changed this for the assignment "
+    return gameState
 
   def debugDraw(self, cells, color, clear=False):
 
