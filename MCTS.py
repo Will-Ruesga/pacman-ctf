@@ -48,9 +48,10 @@ def createTeam(firstIndex, secondIndex, isRed,
 ##########
 
 class Node:
-    def __init__(self, state, agentIndex, parent=None, action=None, depth=np.inf):
+    def __init__(self, state, agentIndex, parent=None, action=None, depth=np.inf, agent= None):
         self.state = state
         self.agentIndex = agentIndex
+        self.agent=agent
         self.parent = parent
         self.action = action
         self.children = []
@@ -82,7 +83,7 @@ class Node:
     def isFullyExpanded(self):
         return len(self.untriedActions) == 0
     
-    def bestChild(self, c=1.0):
+    def bestChild(self, c=10.0):
         bestScore = float('-inf')
         bestChild = None
         
@@ -101,7 +102,7 @@ class Node:
         action = np.random.choice(self.untriedActions)
         self.untriedActions.remove(action) #np.delete(self.untriedActions, np.where(self.untriedActions == action))
         nextState = self.state.generateSuccessor(self.agentIndex, action)
-        child = Node(nextState, self.agentIndex, parent=self, action=action, depth=self.depth)
+        child = Node(nextState, self.agentIndex, parent=self, action=action, depth=self.depth, agent=self.agent)
         self.children.append(child)
 
         return child
@@ -110,14 +111,14 @@ class Node:
         state = self.state.deepCopy()
         agentIndex = self.agentIndex
         i = 0
-        initScore = state.getScore()
+        initScore = self.agent.getScore(state)
         while (not state.isOver()) and i < self.depth:
             actions = state.getLegalActions(agentIndex)
             action = np.random.choice(actions)
             state = state.generateSuccessor(agentIndex, action)
             i+=1
         
-        return (state.getScore() - initScore)*10
+        return (self.agent.getScore(state) - initScore)*10 + self.rewardFunction(state)
     
     def treePolicy (self):
         node = self
@@ -135,43 +136,58 @@ class Node:
         if self.parent is not None:
             self.parent.backup(reward)
     
-    def reward_function(self, game_state, agent):
-        reward = 0
-        # Reward the agent for capturing the opponent's flag
-        if agent.get_position() == game_state.get_opponent_flag_position() and agent.has_flag():
-            reward += 100
-        # Punish the agent for getting tagged by the opponent
-        elif agent.get_position() in game_state.get_opponent_positions():
-            reward -= 10
-        # Encourage the agent to eat dots and power pellets
-        elif agent.get_position() in game_state.get_pellet_positions():
-            reward += 1
-        return reward
+    def rewardFunction(self, state, mode="attack"):
+        # Get the position and carrying status of the agent
+        agent_pos = state.getAgentPosition(self.agentIndex)
+        is_pacman = state.getAgentState(self.agentIndex).isPacman
+        carrying = state.getAgentState(self.agentIndex).numCarrying
+
+        # Get the number of opponents scared and caught
+        opponents_scared = sum([1 for opp in self.agent.getOpponents(state) if state.getAgentState(opp).scaredTimer > 0])
+        opponents_caught = sum([1 for opp in self.agent.getOpponents(state) if state.getAgentState(opp).isPacman and state.getAgentState(opp).numCarrying == 0])
+        opponents_carrying = sum([state.getAgentState(opp).numCarrying for opp in self.agent.getOpponents(state)])
+
+        distance_to_own_food = min([self.agent.getMazeDistance(agent_pos, food_pos) for food_pos in self.agent.getFood(state).asList()])+1
+        distance_to_opponents = min([self.agent.getMazeDistance(agent_pos, state.getAgentPosition(opp)) for opp in self.agent.getOpponents(state)])+1
+
+        # Compute the reward based on the weighting factors
+        w0, w1, w2, w3, = self.getWeights(mode)
+
+        return (w0 / distance_to_own_food) + w1 * carrying + w2 * opponents_carrying + (w3 / distance_to_opponents)
+    
+    def getWeights(self, mode):
+        if mode == "attack":
+            w0 = 1.0  # Weight for distance to own food
+            w1 = 2.0  # Weight for food carried
+            w2 = -1.0  # Weight for opponents carrying
+            w3 = -0.2  # Weight for distance to opponents (min)
+        return w0, w1, w2, w3
     
     def printRewards(self):
-        print("---- ACTIONS: REWARDS ----")
+        print(" ")
+        print("Agent Index: " + str(self.agentIndex) + " | Agent position: " + str(self.state.getAgentPosition(self.agentIndex)) + " | Carrying: " + str(self.state.getAgentState(self.agentIndex).numCarrying))
+        print("---- ACTIONS: REWARDS / VISITS / AVERAGE ----")
         for child in self.children:
-            print(child.action + ": " + str(child.totalReward))
+            print(child.action + ": " + str(child.totalReward) + " / " + str(child.visits) + " / " + str(child.totalReward/self.visits))
 
 class MCTSPacman(CaptureAgent):
-    def __init__(self, index, depth=100, timeForComputing=.9):
+    def __init__(self, index, depth=20, timeForComputing=0.9):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
         self.depth=depth
 
-    def registerInitialState(self, gameState):
-        CaptureAgent.registerInitialState(self, gameState)
-        self.start = gameState.getAgentPosition(self.index)
+    def registerInitialState(self, state):
+        CaptureAgent.registerInitialState(self, state)
+        self.start = state.getAgentPosition(self.index)
         self.prevAction = None
         
-    def chooseAction(self, gameState):
+    def chooseAction(self, initState):
         # Set the start state
-        state = gameState.deepCopy()
+        state = initState.deepCopy()
         
         # Create the root node
-        rootNode = Node(state, self.index, depth=self.depth, action=self.prevAction)
+        rootNode = Node(state, self.index, depth=self.depth, action=self.prevAction, agent=self)
         
-        nodes=0
         # Start the MCTS algorithm
         startTime = time.time()
         while time.time() - startTime < self.timeForComputing:
@@ -185,10 +201,8 @@ class MCTSPacman(CaptureAgent):
 
             # Backup
             node.backup(reward)
-            nodes+=1
 
         self.prevAction = rootNode.bestChild(c=0).action
         rootNode.printRewards()
-        print(nodes)
         # Return the best action
         return rootNode.bestChild(c=0).action
