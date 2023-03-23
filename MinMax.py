@@ -170,7 +170,6 @@ class Node:
             if not self.parent.action is None:
                 if self.action == Directions.REVERSE[self.parent.action] and self.agentIndex == self.index: features['reverse'] = 1
         if self.action == Directions.STOP and self.agentIndex == self.index: features['stop'] = 1
-        
 
         # Get the number of opponents scared and caught
         #opponents_scared = sum([1 for opp in enemies if state.getAgentState(opp).scaredTimer > 0])
@@ -235,7 +234,7 @@ class Node:
  
 
 class MCTSPacman(CaptureAgent):
-    def __init__(self, index, mode="attack", depth=12, timeForComputing=0.2):
+    def __init__(self, index, mode="attack", depth=1, timeForComputing=0.2):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
         self.depth = depth
@@ -249,7 +248,7 @@ class MCTSPacman(CaptureAgent):
     def chooseAction(self, initState):
         # Set the start state
         state = initState.deepCopy()
-        
+        print(self.getFood(state).asList())
         # Create the root node
         rootNode = Node(state, self.index, self.index, depth=self.depth, action=self.prevAction, agent=self, mode=self.mode)
         initScore = self.getScore(state)
@@ -265,9 +264,8 @@ class MCTSPacman(CaptureAgent):
             # Backup
             node.backup(reward)
 
-            i+= 0
 
         #self.prevAction = rootNode.bestChild(c=0).action
         #rootNode.printRewards(initScore)
         # Return the best action
-        return rootNode.bestChild(c=0).action #rootNode.minmaxAction()
+        return rootNode.minmaxAction(initScore)
