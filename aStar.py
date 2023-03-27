@@ -88,10 +88,7 @@ class AStarAgent(CaptureAgent):
             features['distDefenders'] = min([self.getMazeDistance(agent_pos, opp.getPosition()) for opp in defenders])
 
         return features
-
-    def getWeights(self):
-        return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.2, 'distDefenders': 0.8, 'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
-
+    
     def rewardFunction(self, state, initScore):
         features = self.getFeatures(state, initScore)
         weights = self.getWeights()
@@ -106,12 +103,6 @@ class AStarAgent(CaptureAgent):
             successors.append((successor, action, cost))
         return successors
 
-    # def getCost(self, state):
-    #     position = state.getAgentPosition(self.index)
-    #     opponents = [state.getAgentPosition(i) for i in self.getOpponents(state)]
-    #     distances = [manhattanDistance(position, opponent) for opponent in opponents]
-    #     return min(distances)
-
     def aStarSearch(self, gameState):
         startState = gameState
         startNode = (self.getStateId(startState), startState.getLegalActions(self.index), 0)
@@ -123,7 +114,7 @@ class AStarAgent(CaptureAgent):
             _, currentNode = heapq.heappop(queue)
             _, actions, cost = currentNode
             currentState = self.getStateFromId()
-            if currentState.data._win or currentState.data._lose:
+            if currentState.isOver():
                 return actions
             if currentState not in visited:
                 visited.add(currentState)
@@ -135,7 +126,7 @@ class AStarAgent(CaptureAgent):
                     nextNode = (nextStateId, actions + [action], nextCost)
                     priority = nextCost + self.rewardFunction(nextState, self.getScore(nextState))
                     heapq.heappush(queue, (priority, nextNode))
-            return actions_list
+            return max(queue)
 
     def getStateId(self, state):
         agentState = state.getAgentState(self.index)
@@ -149,10 +140,6 @@ class AStarAgent(CaptureAgent):
         state = self.getCurrentObservation().deepCopy()
         state.data.agentStates[self.index] = agentState
         return state
-
-    def chooseAction(self, gameState):
-        actions = self.aStarSearch(gameState)
-        return max(actions) if actions else Directions.STOP
 
     def getGoalState(self, gameState):
         """
@@ -188,16 +175,20 @@ class OffensiveAstarAgent(AStarAgent):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
 
+    def getWeights(self):
+        return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.2, 'distDefenders': 0.8, 
+                'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
+
     def chooseAction(self, gameState):
         """
         Picks among the actions with the highest Q(s,a).
         """
-        actions = gameState.getLegalActions(self.index)
         actionPath = self.aStarSearch(gameState)
-        if actionPath:
-            return min(actionPath)
+        action = actionPath[1][0][1]
+        if action in gameState.getLegalActions(self.index):
+            return action
         else:
-            return random.choice(actions)
+            return Directions.STOP
 
 
 class DefensiveAstarAgent(AStarAgent):
@@ -205,13 +196,17 @@ class DefensiveAstarAgent(AStarAgent):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
 
+    def getWeights(self):
+        return {'score': 0.0, 'distFood': 0.0, 'distOppFood': -1.0, 'distInvaders': -10.0, 'distDefenders': 0.0, 
+        'carry': 0.0, 'oppCarry': -10.0, 'stop': -2.0, 'reverse': -1.0}
+
     def chooseAction(self, gameState):
         """
         Picks among the actions with the highest Q(s,a).
         """
-        actions = gameState.getLegalActions(self.index)
         actionPath = self.aStarSearch(gameState)
-        if actionPath:
-            return min(actionPath)
+        action = actionPath[1][0][1]
+        if action in gameState.getLegalActions(self.index):
+            return action
         else:
-            return random.choice(actions)
+            return Directions.STOP
