@@ -3,3 +3,6 @@ __pycache__/
 
 # ignore score?
 score
+
+# ignore agent
+guiAgent.py
