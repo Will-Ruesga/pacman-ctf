@@ -52,7 +52,7 @@ def createTeam(firstIndex, secondIndex, isRed,
 ##########
 
 class Node:
-    def __init__(self, state, agentIndex, index,  parent=None, action=None, depth=np.inf, agent= None, mode="attack", myTurn=True):
+    def __init__(self, state, agentIndex, index,  parent=None, action=None,  agent= None, mode="attack", myTurn=True):
         self.state = state
         self.agentIndex = agentIndex
         self.index = index
@@ -61,25 +61,9 @@ class Node:
         self.action = action
         self.children = []
         self.visits = 0
-        self.totalReward = 0
         self.untriedActions = self.state.getLegalActions(index)
-        self.depth = depth
         self.mode = mode
-        #self.improve()
         self.myTurn=myTurn
-
-    def improve(self):
-        if not self.action is None:
-            if self.action == Directions.STOP:
-                self.totalReward -= 1
-
-        if not self.parent is None:
-            if not self.parent.action is None:
-                #self.untriedActions = np.delete(self.untriedActions, np.where(self.untriedActions == Directions.REVERSE[self.parent.action]))
-                if self.action == Directions.REVERSE[self.parent.action]:
-                    self.totalReward -= 1
-                if self.parent.action == self.action:
-                    self.totalReward += 1
             
     def isLeaf(self):
         return len(self.children) == 0
@@ -90,61 +74,38 @@ class Node:
     def isFullyExpanded(self):
         return len(self.untriedActions) == 0
     
-    def bestChild(self, c=10000.0):
-        bestScore = float('-inf')
+    def bestChild(self):
+        minVisits = np.inf
         bestChild = None
         
         for child in self.children:
-            exploitation = child.totalReward / child.visits
-            exploration =  (2*math.log(self.visits) / child.visits) ** 0.5
-            score = exploitation + c * exploration
-            
-            if score > bestScore:
-                bestScore = score
+            if child.visits < minVisits:
+                minVisits = child.visits
                 bestChild = child
         
         return bestChild
     
     def expand(self):
         action = np.random.choice(self.untriedActions)
-        self.untriedActions.remove(action) #np.delete(self.untriedActions, np.where(self.untriedActions == action))
+        self.untriedActions.remove(action)
         nextState = self.state.generateSuccessor(self.index, action)
-        child = Node(nextState, self.agentIndex, (self.index+1) % nextState.getNumAgents(), parent=self, action=action, depth=self.depth, agent=self.agent, mode=self.mode, myTurn=(not self.myTurn))
+        child = Node(nextState, self.agentIndex, (self.index+1) % nextState.getNumAgents(), parent=self, action=action, agent=self.agent, mode=self.mode, myTurn=(not self.myTurn))
         self.children.append(child)
 
         return child
     
-    def defaultPolicy(self):
-        state = self.state.deepCopy()
-        agentIndex = self.index
-        i = 0
-        initScore = copy.deepcopy(self.agent.getScore(state))
-        while (not state.isOver()) and i < self.depth:
-            actions = state.getLegalActions(agentIndex)
-            action = np.random.choice(actions)
-            state = state.generateSuccessor(agentIndex, action)
-            agentIndex = (agentIndex + 1) % state.getNumAgents()
-            i+=1
-        
-        return self.rewardFunction(state, initScore)
-    
-    def treePolicy (self, d=1000):
+    def treePolicy (self):
         node = self
-        i=0
-        while not node.isTerminal() and i <d:
-            if not node.isFullyExpanded():
-                return node.expand()
-            else:
-                node = node.bestChild()
-            i+=1
+        while not node.isTerminal():
+            if not node.isFullyExpanded(): return node.expand()
+            else: node = node.bestChild()
         return node
     
-    def backup(self, reward):
+    def backup(self):
         self.visits += 1
-        self.totalReward += reward
         
         if self.parent is not None:
-            self.parent.backup(reward)
+            self.parent.backup()
     
     def rewardFunction(self, state, initScore):
         features = self.getFeatures(state, initScore)
@@ -154,28 +115,23 @@ class Node:
     
     def getFeatures(self, state, initScore):
         features = util.Counter()
+
+        # Get the position and carrying status of the agent
+        agent_pos = state.getAgentPosition(self.agentIndex)
+
+        # Get lists of items to use
         enemies = [state.getAgentState(opp) for opp in self.agent.getOpponents(state)]
         invaders = [opp for opp in enemies if opp.isPacman and opp.getPosition() != None]
         defenders = [opp for opp in enemies if (not opp.isPacman) and opp.getPosition() != None]
         food = self.agent.getFood(state).asList()
         oppFood = self.agent.getFoodYouAreDefending(state).asList()
 
-
-        # Get the position and carrying status of the agent
-        agent_pos = state.getAgentPosition(self.agentIndex)
-        #is_pacman = state.getAgentState(self.agentIndex).isPacman
-        features['carry'] = state.getAgentState(self.agentIndex).numCarrying
+        
+        # Calculate and add features
         features['score'] = self.agent.getScore(state) - initScore
-        if not self.parent is None:
-            if not self.parent.action is None:
-                if self.action == Directions.REVERSE[self.parent.action] and self.agentIndex == self.index: features['reverse'] = 1
-        if self.action == Directions.STOP and self.agentIndex == self.index: features['stop'] = 1
-
-        # Get the number of opponents scared and caught
-        #opponents_scared = sum([1 for opp in enemies if state.getAgentState(opp).scaredTimer > 0])
-        #opponents_caught = sum([1 for opp in enemies if state.getAgentState(opp).isPacman and state.getAgentState(opp).numCarrying == 0])
+        features['carry'] = state.getAgentState(self.agentIndex).numCarrying
         features['oppCarry'] = sum([opp.numCarrying for opp in enemies])
-
+        
         if len(food) > 0:
             features['distFood'] = min([self.agent.getMazeDistance(agent_pos, food_pos) for food_pos in food])
 
@@ -192,10 +148,10 @@ class Node:
     
     def getWeights(self):
         if self.mode == "attack":
-            return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.2, 'distDefenders': 0.8, 'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
+            return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.5, 'distDefenders': 0.5, 'carry': 10.0, 'oppCarry': 0.0}
         
         elif self.mode == "defense":
-            return {'score': 0.0, 'distFood': 0.0, 'distOppFood': -1.0, 'distInvaders': -10.0, 'distDefenders': 0.0, 'carry': 0.0, 'oppCarry': -10.0, 'stop': -2.0, 'reverse': -1.0}
+            return {'score': 10.0, 'distFood': 0.0, 'distOppFood': -1.0, 'distInvaders': -10.0, 'distDefenders': 0.0, 'carry': 0.0, 'oppCarry': -10.0}
 
     def printRewards(self, initScore):
         print(" ")
@@ -211,33 +167,26 @@ class Node:
 
     def evaluateTree(self, initScore):
         if self.isFullyExpanded():
-            if self.myTurn:
-                score = max([child.evaluateTree(initScore) for child in self.children])
-            else:
-                score = min([child.evaluateTree(initScore) for child in self.children])
-        else:
-            return self.rewardFunction(self.state, initScore)
-
-        return score
+            if self.myTurn: return max([child.evaluateTree(initScore) for child in self.children])
+            else: return min([child.evaluateTree(initScore) for child in self.children])
+        else: return self.rewardFunction(self.state, initScore)
 
     def minmaxAction(self, initScore):
-        maxScore = -float("inf")
+        maxScore = float("-inf")
         bestChild = None
         for child in self.children:
             score = child.evaluateTree(initScore)
             if score > maxScore:
                 bestChild = child
                 maxScore = score
+
         return bestChild.action
 
-
- 
-
 class MCTSPacman(CaptureAgent):
-    def __init__(self, index, mode="attack", depth=1, timeForComputing=0.2):
+    def __init__(self, index, mode="attack", timeForComputing=0.6):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
-        self.depth = depth
+        self.serchTime = 0.1*timeForComputing
         self.mode = mode
 
     def registerInitialState(self, state):
@@ -248,24 +197,27 @@ class MCTSPacman(CaptureAgent):
     def chooseAction(self, initState):
         # Set the start state
         state = initState.deepCopy()
-        print(self.getFood(state).asList())
+
         # Create the root node
-        rootNode = Node(state, self.index, self.index, depth=self.depth, action=self.prevAction, agent=self, mode=self.mode)
-        initScore = self.getScore(state)
+        rootNode = Node(state, self.index, self.index, action=self.prevAction, agent=self, mode=self.mode)
+        initScore = copy.deepcopy(self.getScore(state))
+
         # Start the MCTS algorithm
-        i=0
         startTime = time.time()
-        while time.time() - startTime < self.timeForComputing:
+        while time.time() - startTime < self.serchTime:
             # Select - Tree Policy
             node = rootNode.treePolicy()
 
-            reward = node.defaultPolicy()
-
             # Backup
-            node.backup(reward)
+            node.backup()
 
+        rootNode.printRewards(initScore)
+        action = rootNode.minmaxAction(initScore)
 
-        #self.prevAction = rootNode.bestChild(c=0).action
-        #rootNode.printRewards(initScore)
-        # Return the best action
-        return rootNode.minmaxAction(initScore)
+        # Update the search time
+        self.serchTime += (self.timeForComputing - time.time() + startTime)*0.01
+        print("Search time: " + str(self.serchTime))
+        print("Total time: " + str(time.time() - startTime))
+        print("")
+
+        return action
