@@ -215,7 +215,7 @@ class OffensiveReflexAgent(improvedReflexAgent):
     return features
 
   def getWeights(self):
-    return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.2, 'distDefenders': 0.8, 'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
+    return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.5, 'distDefenders': 0.5, 'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
 
 class DefensiveReflexAgent(improvedReflexAgent):
   """
