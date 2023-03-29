@@ -22,7 +22,7 @@
 
 from captureAgents import CaptureAgent
 import distanceCalculator
-import random, time, util, sys, copy
+import random, time, util, sys
 from game import Directions
 import game
 from util import nearestPoint
@@ -147,7 +147,7 @@ class improvedReflexAgent(CaptureAgent):
     Linear combination of features and feature weights.
     """
     features = self.getFeatures(gameState, action)
-    weights = self.getWeights(gameState, action)
+    weights = self.getWeights()
     return features * weights
 
   def getFeatures(self, gameState, action):
@@ -172,50 +172,84 @@ class OffensiveReflexAgent(improvedReflexAgent):
   Offensive agent, goes for the food and secures it
   """
   def getFeatures(self, gameState, action):
-    # Initialize Features
-    features = util.Counter()
+      # Initialize Features
+      features = util.Counter()
 
-    # Game information
-    initScore = copy.deepcopy(self.getScore(gameState))
-    agent_pos = gameState.getAgentPosition(self.index)
+      # Game information
+      successor = self.getSuccessor(gameState, action)
 
-    # Food information
-    foodList = self.getFood(gameState).asList()
-    oppFoodList = self.getFoodYouAreDefending(gameState).asList()
-    
-    # Enenmy information
-    enemies = [gameState.getAgentState(opp) for opp in self.getOpponents(gameState)]
-    invaders = [opp for opp in enemies if opp.isPacman and opp.getPosition() != None]
-    defenders = [opp for opp in enemies if (not opp.isPacman) and opp.getPosition() != None]
+      # Food information
+      foodList = self.getFood(successor).asList()
 
-    # Add features!
-    if len(foodList) > 0:
-      # Get the position and carrying status of the agent
-      features['carry'] = gameState.getAgentState(self.index).numCarrying
-      features['score'] = self.getScore(gameState) - initScore
-
-      # Get the number of opponents scared and caught
-      features['oppCarry'] = sum([opp.numCarrying for opp in enemies])
-      features['distFood'] = min([self.getMazeDistance(agent_pos, food_pos) for food_pos in foodList])
-
-      if len(oppFoodList) > 0:
-        features['distOppFood'] = min([self.getMazeDistance(agent_pos, food_pos) for food_pos in oppFoodList])
-
-      if len(invaders) > 0:
-        features['distInvaders'] = min([self.getMazeDistance(agent_pos, opp.getPosition()) for opp in invaders])
-
-      if len(defenders) > 0:
-        features['distDefenders'] = min([self.getMazeDistance(agent_pos, opp.getPosition()) for opp in defenders])
-
-      if action == Directions.STOP: features['stop'] = 1
+      # Agent information
+      agentPosition = successor.getAgentState(self.index).getPosition()
       
-      rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-      if action == rev: features['reverse'] = 1
+      # Enemy information
+      enemyIndex = self.getOpponents(gameState)
+      enemyPosition = [successor.getAgentState(i).getPosition() for i in enemyIndex ]
+      
+      # ADD FEATURES!
+      features['successorScore'] = -len(foodList)
+      if len(foodList) > 0: # This should always be True,  but better safe than sorry
+        
+        # Distance to enemy
+        features['distToFood'] = min([self.getMazeDistance(agentPosition, food) for food in foodList])
 
-    return features
+        # Distance to food
+        features['distToEnemy'] = self.getMazeDistance(agentPosition, min(enemyPosition))
+        
+        # Stop penalised
+        if action == Directions.STOP: features['stop'] = 1
+
+        # Reverse (go backwrds uselessly) penalised
+        rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
+        if action == rev: features['reverse'] = 1
+
+      return features
 
   def getWeights(self):
-    return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.5, 'distDefenders': 0.5, 'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
+    return {'successorScore': 100, 'distToFood': -10, 'distToEnemy': 5, 'stop': -1, 'reverse': -2}
+
+
+
+
+
+  # def getFeatures(self, gameState, action):
+  #   # Initialize Features
+  #   features = util.Counter()
+
+  #   # Game information
+  #   successor = self.getSuccessor(gameState, action)
+  #   agent_pos = successor.getAgentPosition(self.index)
+
+  #   # Food information
+  #   foodList = self.getFood(successor).asList()
+    
+  #   # Enenmy information
+  #   enemies = [successor.getAgentState(opp) for opp in self.getOpponents(successor)]
+  #   invaders = [opp for opp in enemies if opp.isPacman and opp.getPosition() != None]
+  #   defenders = [opp for opp in enemies if (not opp.isPacman) and opp.getPosition() != None]
+
+  #   # Add features!
+  #   if len(foodList) > 0:
+  #     features['distFood'] = min([self.getMazeDistance(agent_pos, food_pos) for food_pos in foodList])
+
+  #     if len(invaders) > 0:
+  #       features['distInvaders'] = min([self.getMazeDistance(agent_pos, opp.getPosition()) for opp in invaders])
+
+  #     if len(defenders) > 0:
+  #       enemyPosition = [successor.getAgentState(i).getPosition() for i in enemies]
+  #       features['distDefenders'] = min([self.getMazeDistance(agent_pos, enemy_pos) for enemy_pos in enemyPosition])
+
+  #     if action == Directions.STOP: features['stop'] = 1
+      
+  #     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
+  #     if action == rev: features['reverse'] = 1
+
+  #   return features
+
+  # def getWeights(self):
+  #   return {'score': 100, 'distFood': -10, 'distDefenders': 5, 'stop': -1, 'reverse': -2}
 
 class DefensiveReflexAgent(improvedReflexAgent):
   """
