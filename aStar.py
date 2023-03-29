@@ -141,34 +141,12 @@ class AStarAgent(CaptureAgent):
         state.data.agentStates[self.index] = agentState
         return state
 
-    def getGoalState(self, gameState):
-        """
-        Returns a state where all flags have been captured and returned to base
-        """
-        red = gameState.isOnRedTeam(self.index)
-        flags = self.getFood(gameState).asList()
-        enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
-        invaders = [a for a in enemies if not a.isPacman and a.getPosition() != None]
-        captureDistance = []
-        for flag in flags:
-            distanceToFlag = []
-            for invader in invaders:
-                distance = self.getMazeDistance(flag, invader.getPosition())
-                distanceToFlag.append(distance)
-            if len(distanceToFlag) > 0:
-                captureDistance.append(min(distanceToFlag))
-        if len(captureDistance) > 0:
-            goalStateDistance = max(captureDistance)
-            if red:
-                goalState = (goalStateDistance + 1, gameState.getAgentState(self.index).getPosition(), tuple(flags))
-            else:
-                goalState = (goalStateDistance + 1, tuple(flags), gameState.getAgentState(self.index).getPosition())
-        else:
-            if red:
-                goalState = (0, gameState.getAgentState(self.index).getPosition(), tuple(flags))
-            else:
-                goalState = (0, tuple(flags), gameState.getAgentState(self.index).getPosition())
-        return goalState
+    def oppositeAction(self, action):
+        if action == "North": return "South"
+        elif action == "South": return "North"
+        elif action == "East": return "West"
+        elif action == "West": return "East"
+
 
 class OffensiveAstarAgent(AStarAgent):
     def __init__(self, index, timeForComputing=0.2):
@@ -177,8 +155,8 @@ class OffensiveAstarAgent(AStarAgent):
 
     def getWeights(self):
         return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.2, 'distDefenders': 0.8, 
-                'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -1.0}
-
+                'carry': 10.0, 'oppCarry': 0.0, 'stop': -2.0, 'reverse': -2.0}
+    
     def chooseAction(self, gameState):
         """
         Picks among the actions with the highest Q(s,a).
@@ -188,7 +166,8 @@ class OffensiveAstarAgent(AStarAgent):
         if action in gameState.getLegalActions(self.index):
             return action
         else:
-            return Directions.STOP
+            # return Directions.STOP
+            return self.oppositeAction(action)
 
 
 class DefensiveAstarAgent(AStarAgent):
@@ -209,4 +188,5 @@ class DefensiveAstarAgent(AStarAgent):
         if action in gameState.getLegalActions(self.index):
             return action
         else:
-            return Directions.STOP
+            # return Directions.STOP
+            return self.oppositeAction(action)
