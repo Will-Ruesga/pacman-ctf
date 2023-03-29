@@ -176,7 +176,7 @@ class Node:
             return {'score': 1000.0, 'distFood': -1.0, 'distOppFood': 0.0, 'distInvaders': -0.5, 'distDefenders': 0.5, 'carry': 10.0, 'oppCarry': 0.0}
         
         elif self.mode == "defense":
-            return {'score': 10.0, 'distFood': 0.0, 'distOppFood': -1.0, 'distInvaders': -10.0, 'distDefenders': 0.0, 'carry': 0.0, 'oppCarry': -10.0}
+            return {'score': 100.0, 'distFood': 0.0, 'distOppFood': -1.0, 'distInvaders': -10.0, 'distDefenders': 0.0, 'carry': 0.0, 'oppCarry': -50.0}
 
     def printRewards(self):
         print(" ")
@@ -190,7 +190,7 @@ class Node:
             #child.printTree("   " + string)
 
 class MCTSPacman(CaptureAgent):
-    def __init__(self, index, mode="attack", max_depth=20, timeForComputing=0.5):
+    def __init__(self, index, mode="attack", max_depth=40, timeForComputing=0.9):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
         self.max_depth = max_depth
@@ -206,10 +206,9 @@ class MCTSPacman(CaptureAgent):
         state = initState.deepCopy()
         
         # Create the root node
-        rootNode = Node(state, self.index, self.index, max_depth=self.max_depth, action=self.prevAction, agent=self, mode=self.mode)
-        initScore = self.getScore(state)
+        rootNode = Node(state, self.index, self.index, max_depth=self.max_depth, action=self.prevAction, agent=self, mode=self.mode, initScore=self.getScore(state))
+        
         # Start the MCTS algorithm
-        i=0
         startTime = time.time()
         while time.time() - startTime < self.timeForComputing:
             # Select - Tree Policy
@@ -219,8 +218,6 @@ class MCTSPacman(CaptureAgent):
 
             # Backup
             node.backup(reward)
-
-            i+= 0
         
         rootNode.printRewards()
         print("Total time: " + str(time.time() - startTime))

@@ -183,7 +183,7 @@ class Node:
         return bestChild.action
 
 class MCTSPacman(CaptureAgent):
-    def __init__(self, index, mode="attack", timeForComputing=0.6):
+    def __init__(self, index, mode="attack", timeForComputing=0.5):
         CaptureAgent.__init__(self, index)
         self.timeForComputing = timeForComputing
         self.serchTime = 0.1*timeForComputing
