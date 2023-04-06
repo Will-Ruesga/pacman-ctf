@@ -209,47 +209,7 @@ class OffensiveReflexAgent(improvedReflexAgent):
 
   def getWeights(self):
     return {'successorScore': 100, 'distToFood': -10, 'distToEnemy': 5, 'stop': -1, 'reverse': -2}
-
-
-
-
-
-  # def getFeatures(self, gameState, action):
-  #   # Initialize Features
-  #   features = util.Counter()
-
-  #   # Game information
-  #   successor = self.getSuccessor(gameState, action)
-  #   agent_pos = successor.getAgentPosition(self.index)
-
-  #   # Food information
-  #   foodList = self.getFood(successor).asList()
-    
-  #   # Enenmy information
-  #   enemies = [successor.getAgentState(opp) for opp in self.getOpponents(successor)]
-  #   invaders = [opp for opp in enemies if opp.isPacman and opp.getPosition() != None]
-  #   defenders = [opp for opp in enemies if (not opp.isPacman) and opp.getPosition() != None]
-
-  #   # Add features!
-  #   if len(foodList) > 0:
-  #     features['distFood'] = min([self.getMazeDistance(agent_pos, food_pos) for food_pos in foodList])
-
-  #     if len(invaders) > 0:
-  #       features['distInvaders'] = min([self.getMazeDistance(agent_pos, opp.getPosition()) for opp in invaders])
-
-  #     if len(defenders) > 0:
-  #       enemyPosition = [successor.getAgentState(i).getPosition() for i in enemies]
-  #       features['distDefenders'] = min([self.getMazeDistance(agent_pos, enemy_pos) for enemy_pos in enemyPosition])
-
-  #     if action == Directions.STOP: features['stop'] = 1
-      
-  #     rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-  #     if action == rev: features['reverse'] = 1
-
-  #   return features
-
-  # def getWeights(self):
-  #   return {'score': 100, 'distFood': -10, 'distDefenders': 5, 'stop': -1, 'reverse': -2}
+    # return {'successorScore': 100, 'distanceToFood': -1}
 
 class DefensiveReflexAgent(improvedReflexAgent):
   """
